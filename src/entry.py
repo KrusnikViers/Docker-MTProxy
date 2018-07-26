@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+
+import crontab
+import json
+import subprocess
+
+from update import download_from_core
+
+
+# Read configuration
+with open('/configuration.json') as configuration_file:
+    configuration = json.load(configuration_file)
+
+    keys = configuration.get('existing_keys', [])
+    keys_to_generate = configuration.get('keys_to_generate', 1)
+    update_period_hours = configuration.get('update_period_hours', 24)
+    server_url = configuration['server_url']
+    server_port = configuration.get('server_port', 443)
+
+# Generate and print client keys.
+for i in range(0, keys_to_generate):
+    key_process = subprocess.run('head -c 16 /dev/urandom | xxd -ps', shell=True, stdout=subprocess.PIPE)
+    keys.append(key_process.stdout.decode('UTF-8'))
+
+keys_string = ''
+template_url = 'tg://proxy?server={}&port={}&secret={{}}'.format(server_url, server_port)
+for key in keys:
+    print('Key to be used: {}'.format(key))
+    print('Usual invite link: ' + template_url.format(key))
+    print('Random padding invite link: ' + template_url.format('dd' + key))
+    print('---------------------------')
+    keys_string += ' -S ' + key
+
+# Download configuration data from telegram core.
+download_from_core('secret')
+download_from_core('proxy.conf')
+
+# Create cron job, if necessary
+cron = crontab.CronTab(user=True)
+existing_jobs = list(cron.find_comment('mtp'))
+if not existing_jobs:
+    job = cron.new(command='python /src/update.py &> /last_log.txt', comment='mtp')
+    job.hour.every(update_period_hours)
+    cron.write()
+
+# Launch server.
+command = '/server/objs/bin/mtproto-proxy -u nobody -p 80 -H 443 ' + keys_string + ' --aes-pwd secret proxy.conf -M 1'
+subprocess.run(command, shell=True)
