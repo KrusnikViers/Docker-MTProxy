@@ -11,7 +11,8 @@ RUN pip3 install --no-cache-dir --upgrade python-crontab==2.3 requests==2.19 && 
     git clone https://github.com/TelegramMessenger/MTProxy .                 && \
     make                                                                     && \
     apt-get clean                                                            && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*                            && \
+    touch /configuration.json
 
 EXPOSE 443
 COPY src /src

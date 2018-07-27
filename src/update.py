@@ -11,10 +11,9 @@ def download_from_core(resource: str):
     elif resource == 'proxy.conf':
         url = 'https://core.telegram.org/getProxyConfig/proxy-multi.conf'
 
-    working_dir = '/server/objs/bin'
     download_request = requests.get(url, stream=True)
     if download_request.status_code == 200:
-        with open(working_dir + '/' + resource, 'wb') as output_file:
+        with open('/server/' + resource, 'wb') as output_file:
             download_request.raw.decode_content = True
             shutil.copyfileobj(download_request.raw, output_file)
 
