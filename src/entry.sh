@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ -s "/configuration.json" ]
 then
