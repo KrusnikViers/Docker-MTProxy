@@ -46,6 +46,6 @@ if not existing_jobs:
     cron.write()
 
 # Launch server.
-command = '/server/mtproto-proxy -u nobody -p 80 -H 443 ' + \
-          keys_string + ' --aes-pwd /server/secret /server/proxy.conf -M 1'
+command = '/server/mtproto-proxy -u nobody -p 80 -H {} {} --aes-pwd /server/secret /server/proxy.conf -M 1'.format(
+    server_port, keys_string)
 subprocess.run(command, shell=True)

@@ -1,10 +1,10 @@
 # MTProto 1.0
-Easy-configurable docker image for MTProto proxy server.
+Easy-configurable docker image for the MTProto proxy server.
 
 [![](https://images.microbadger.com/badges/image/viers/mtproto.svg)](https://microbadger.com/images/viers/mtproto "Image size")
 
 ### How to run:
-All you need is installed docker and filled json configuration file.
+All you need is an installed docker and filled json configuration file.
 
 Configuration file format:
 ```json
@@ -19,7 +19,7 @@ Configuration file format:
 }
 
 ```
-* existing_keys: Array of client keys, if you have generated some before. 
+* existing_keys: An array of client keys, if you have generated some before. 
 * keys_to_generate: Number of new client keys to generate.
 * update_period_hours: How often server will be updating core configuration. Recommended value - 24.
 * server_url: Server URL (necessary to generate invite link).
@@ -27,10 +27,10 @@ Configuration file format:
 
 Command to launch server itself:
 
-`docker run -d --restart always -v [configuration path]:/configuration.json -p 443:[server port] --name mtproto viers/mtproto`
-* [server port]: port to expose on server, same as server_port in configuration file.
-* [configuration path]: full path to your configuration file.
+`docker run -d --restart always --net "host" -v [configuration path]:/configuration.json --name mtproto viers/mtproto`
 
-To see logs, generated and existing keys and invite links: `docker logs --follow mtproto`.
+, where [configuration path] is a full path to your configuration file.
+
+To see the logs, generated and existing keys and invite links: `docker logs --follow mtproto`.
 
 To collect the server stats: `docker exec mtproto curl http://localhost:80/stats`
