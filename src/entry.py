@@ -18,6 +18,7 @@ with open('/configuration.json') as configuration_file:
     update_period_hours = configuration.get('update_period_hours', 24)
     server_url = configuration['server_url']
     server_port = configuration.get('server_port', 443)
+    tag = configuration.get('proxy_tag', None)
 
 # Generate and print client keys.
 for i in range(0, keys_to_generate):
@@ -46,6 +47,7 @@ if not existing_jobs:
     cron.write()
 
 # Launch server.
-command = '/server/mtproto-proxy -u nobody -p 80 -H {} {} --aes-pwd /server/secret /server/proxy.conf -M 1'.format(
-    server_port, keys_string)
+command = '/server/mtproto-proxy -u nobody -p 80 -H {} {} {} --aes-pwd /server/secret /server/proxy.conf -M 1'.format(
+    server_port, keys_string, tag if tag else '')
+print('launching:\n' + command)
 subprocess.run(command, shell=True)

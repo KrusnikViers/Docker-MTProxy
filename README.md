@@ -15,15 +15,17 @@ Configuration file format:
     "keys_to_generate": 1,
     "update_period_hours": 24,
     "server_url": "127.0.0.1",
-    "server_port": 443
+    "server_port": 443,
+    "tag": "1234554321"
 }
 
 ```
 * existing_keys: An array of client keys, if you have generated some before. 
-* keys_to_generate: Number of new client keys to generate.
-* update_period_hours: How often server will be updating core configuration. Recommended value - 24.
+* keys_to_generate: Number of new client keys to generate. Default: 1
+* update_period_hours: How often server will be updating core configuration. Default: 24.
 * server_url: Server URL (necessary to generate invite link).
-* server_port: Server port (also necessary for invite link), default value - 443.
+* server_port: Server port. Default: 443.
+* tag: Your proxy tag.
 
 Command to launch server itself:
 
