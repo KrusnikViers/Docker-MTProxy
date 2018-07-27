@@ -1,22 +1,18 @@
-FROM python:3.5
+FROM python:3-slim
 
-# Install python dependencies.
-RUN pip3 install --no-cache-dir --upgrade \
-         python-crontab==2.3              \
-         requests==2.19
+# Install dependencies.
+# Build MTProto Proxy itself.
+# Clean everything after installations.
+RUN pip3 install --no-cache-dir --upgrade python-crontab==2.3 requests==2.19 && \
+    apt-get update                                                           && \
+    apt-get install -y git build-essential libssl-dev zlib1g-dev cron        && \
+    mkdir /server                                                            && \
+    cd /server                                                               && \
+    git clone https://github.com/TelegramMessenger/MTProxy .                 && \
+    make                                                                     && \
+    apt-get clean                                                            && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install dependencies
-RUN apt-get update && apt-get install -y git build-essential libssl-dev zlib1g-dev cron
-
-# Build MTProto
 EXPOSE 443
-RUN mkdir /server && cd /server                            && \
-    git clone https://github.com/TelegramMessenger/MTProxy . && \
-    make && cd ./objs/bin
-
-# Clean up after installation.
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Copy source files and create working directories.
 COPY src /src
 CMD ["/src/entry.sh"]

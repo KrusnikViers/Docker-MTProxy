@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
+import binascii
 import crontab
 import json
+import os
 import subprocess
 
 from update import download_from_core
@@ -19,8 +21,8 @@ with open('/configuration.json') as configuration_file:
 
 # Generate and print client keys.
 for i in range(0, keys_to_generate):
-    key_process = subprocess.run('head -c 16 /dev/urandom | xxd -ps', shell=True, stdout=subprocess.PIPE)
-    keys.append(key_process.stdout.decode('UTF-8'))
+    key_string = binascii.b2a_hex(os.urandom(16)).decode('UTF-8')
+    keys.append(key_string)
 
 keys_string = ''
 template_url = 'tg://proxy?server={}&port={}&secret={{}}'.format(server_url, server_port)
