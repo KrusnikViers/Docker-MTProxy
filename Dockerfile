@@ -15,6 +15,7 @@ RUN pip3 install --no-cache-dir --upgrade python-crontab==2.3 requests==2.19 && 
     cp /build/objs/bin/* /server                                             && \
     cd /server                                                               && \
     rm -rf /build                                                            && \
+    apt-get purge -y git build-essential libssl-dev zlib1g-dev               && \
     apt-get autoremove -y                                                    && \
     apt-get clean                                                            && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

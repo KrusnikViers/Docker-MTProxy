@@ -18,7 +18,8 @@ with open('/configuration.json') as configuration_file:
     update_period_hours = configuration.get('update_period_hours', 24)
     server_url = configuration['server_url']
     server_port = configuration.get('server_port', 443)
-    tag = configuration.get('proxy_tag', None)
+    tag = configuration.get('proxy_tag', '')
+    tag = (' -P ' + tag) if tag else ''
 
 # Generate and print client keys.
 for i in range(0, keys_to_generate):
@@ -27,10 +28,10 @@ for i in range(0, keys_to_generate):
 
 keys_string = ''
 template_url = 'tg://proxy?server={}&port={}&secret={{}}'.format(server_url, server_port)
+print('---------------------------')
 for key in keys:
     print('Key to be used: {}'.format(key))
-    print('Usual invite link: ' + template_url.format(key))
-    print('Random padding invite link: ' + template_url.format('dd' + key))
+    print('Invite link: ' + template_url.format(key))
     print('---------------------------')
     keys_string += ' -S ' + key
 
@@ -47,7 +48,7 @@ if not existing_jobs:
     cron.write()
 
 # Launch server.
-command = '/server/mtproto-proxy -u nobody -p 80 -H {} {} {} --aes-pwd /server/secret /server/proxy.conf -M 1'.format(
-    server_port, keys_string, tag if tag else '')
+command = '/server/mtproto-proxy -p 80 -H {} {} {} --aes-pwd /server/secret /server/proxy.conf -M 1'.format(
+    server_port, keys_string, tag)
 print('launching:\n' + command)
 subprocess.run(command, shell=True)
