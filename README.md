@@ -14,7 +14,7 @@ Configuration file format:
     ],
     "keys_to_generate": 1,
     "update_period_hours": 24,
-    "server_url": "127.0.0.1",
+    "server_ip": "127.0.0.1",
     "server_port": 443,
     "tag": "1234554321"
 }

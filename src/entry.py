@@ -4,6 +4,7 @@ import binascii
 import crontab
 import json
 import os
+import socket
 import subprocess
 
 from update import download_from_core
@@ -16,7 +17,7 @@ with open('/configuration.json') as configuration_file:
     keys = configuration.get('existing_keys', [])
     keys_to_generate = configuration.get('keys_to_generate', 1)
     update_period_hours = configuration.get('update_period_hours', 24)
-    server_url = configuration['server_url']
+    server_ip = configuration['server_ip']
     server_port = configuration.get('server_port', 443)
     tag = configuration.get('proxy_tag', '')
     tag = (' -P ' + tag) if tag else ''
@@ -27,13 +28,19 @@ for i in range(0, keys_to_generate):
     keys.append(key_string)
 
 keys_string = ''
-template_url = 'tg://proxy?server={}&port={}&secret={{}}'.format(server_url, server_port)
+template_url = 'tg://proxy?server={}&port={}&secret={{}}'.format(server_ip, server_port)
 print('---------------------------')
 for key in keys:
     print('Key to be used: {}'.format(key))
     print('Invite link: ' + template_url.format(key))
     print('---------------------------')
     keys_string += ' -S ' + key
+
+# Find out local IP with internet access.
+test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+test_socket.connect(("8.8.8.8", 80))
+local_ip = test_socket.getsockname()[0]
+test_socket.close()
 
 # Download configuration data from telegram core.
 download_from_core('secret')
@@ -48,7 +55,12 @@ if not existing_jobs:
     cron.write()
 
 # Launch server.
-command = '/server/mtproto-proxy -p 80 -H {} {} {} --aes-pwd /server/secret /server/proxy.conf -M 1'.format(
-    server_port, keys_string, tag)
+stat_port = 80
+secret_file = '/server/secret'
+proxy_configuration_file = '/server/proxy.conf'
+workers_count = 1
+
+command = '/server/mtproto-proxy -p {} -H {} {} {} --nat-info {}:{} --aes-pwd {} {} -M {}'.format(
+    stat_port, server_port, keys_string, tag, local_ip, server_ip, secret_file, proxy_configuration_file, workers_count)
 print('launching:\n' + command)
 subprocess.run(command, shell=True)
