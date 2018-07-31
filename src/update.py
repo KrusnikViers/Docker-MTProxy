@@ -18,7 +18,7 @@ def download_from_core(resource: str):
         with open(file_path, 'wb') as output_file:
             download_request.raw.decode_content = True
             shutil.copyfileobj(download_request.raw, output_file)
-            print('{} downloaded: {}b'.format(resource, os.path.getsize(file_path)))
+        print('{} downloaded: {}b'.format(resource, os.path.getsize(file_path)))
     else:
         print('{} download failed: {}'.format(resource, download_request.text))
 
