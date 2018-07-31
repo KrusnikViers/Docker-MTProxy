@@ -60,7 +60,7 @@ secret_file = '/server/secret'
 proxy_configuration_file = '/server/proxy.conf'
 workers_count = 1
 
-command = '/server/mtproto-proxy -p {} -H {} {} {} --nat-info {}:{} --aes-pwd {} {} -M {}'.format(
+command = '/server/mtproto-proxy -u nobody -p {} -H {} {} {} --nat-info {}:{} --aes-pwd {} {} -M {}'.format(
     stat_port, server_port, keys_string, tag, local_ip, server_ip, secret_file, proxy_configuration_file, workers_count)
 print('launching:\n' + command)
 subprocess.run(command, shell=True)
