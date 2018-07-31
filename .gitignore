@@ -1,3 +1,7 @@
 # Project files
 .idea/
 venv/
+
+# Compiled files
+*.pyc
+__pycache__/
