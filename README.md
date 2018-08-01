@@ -1,4 +1,4 @@
-# MTProxy v1.0.1
+# MTProxy v1.1
 Lightweight and easy to set up docker image for MTProto proxy server.
 
 [![Docker Build Status](https://img.shields.io/docker/build/viers/mtproxy.svg)](https://hub.docker.com/r/viers/mtproxy/)
@@ -8,7 +8,11 @@ Lightweight and easy to set up docker image for MTProto proxy server.
 Binary inside: [f9158e3129efd4c from 19 Jul 2018](https://github.com/TelegramMessenger/MTProxy/commit/f9158e3129efd4ccdc291aefb840209791226a77)
 
 ### How to run:
-All you need is an installed docker. Server can be configured with the special json dictionary file, where all the fields are top level key-value pairs. If the field is absent, it's value is set to default.
+All you need is an installed docker. A server must be configured with the special json dictionary file, mounted as `/configuration.json`. To get configuration template, you may run a container with an empty configuration file (only `{}` inside).
+
+After the configuration file is mounted, it will be modified from inside the container, so that generated data will be kept after restart. Changing this file on the host would not affect the container until the manual container restart.
+
+Configuration parameters:
 
 * `keys`: An array of client keys, if you have generated some before. By default, this array is empty. 
 * `new_keys`: Number of new client keys to generate. If you have no existing keys, you should generate at least one. Default value: 1
@@ -18,18 +22,8 @@ All you need is an installed docker. Server can be configured with the special j
 * `port`: Exposed server port for invite links. Default value: 443.
 * `tag`: Your proxy tag, optionally received from [@MTProxyBot](https://t.me/MTProxybot). By default is empty.
 
-To be applied, you should mount this file into docker container as `/configuration.json`. You could also mount file with empty json dictionary, to let server generate file with default values for you at the first launch.
+To launch container: `docker run -d --restart always -p [server-port]:443 -v [full-configuration-file-path]:/configuration.json --name mtproxy viers/mtproxy`.
 
-**Important!** After file is mounted, it could be modified from inside container. In particular, `new_keys` will be set to 0, and generated keys will be placed into `keys` section. This will allow you to restart container safely without losing any generated data. Also, you may update data in configuration file yourself - in that case, new values will be applied at the next update or after manual restart.
+To see the logs: `docker logs --follow mtproxy`.
 
----
-
-Recommended command to launch container:
-
-`docker run -d --restart always -p [port]:443 -v [configuration path]:/configuration.json --name mtproxy viers/mtproxy`
-
-where `[port]` is the server port, and `[configuration path]` is a full path to your configuration file. Generated keys and all invite links will be printed in container log.
-
-To see the logs, use: `docker logs --follow mtproxy`.
-
-To collect server stats, use: `docker exec mtproxy curl http://localhost:80/stats`
+To collect server stats: `docker exec mtproxy curl http://localhost:80/stats`
