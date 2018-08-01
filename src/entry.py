@@ -72,7 +72,6 @@ if ip:
 
 # Configuration files.
 proxy_list_path = '/server/proxy.conf'
-download(proxy_list_path, 'https://core.telegram.org/getProxyConfig/proxy-multi.conf')
 command += ' --aes-pwd {} {} -M 1'.format(secret_path, proxy_list_path)
 
 # Write actual configuration values into local configuration.
@@ -91,6 +90,7 @@ seconds_to_wait = update_hours * 3600
 
 # Outer loop: each iteration updates remote configuration and run server for |update_hours|
 while True:
+    download(proxy_list_path, 'https://core.telegram.org/getProxyConfig/proxy-multi.conf')
     start_time = time.time()
 
     # Inner loop: running and restarting the server, if it has crashed until the update time.
