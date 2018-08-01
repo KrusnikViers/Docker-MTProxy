@@ -10,20 +10,16 @@ import socket
 import subprocess
 import time
 
-secret_path = '/server/secret'
-proxy_list_path = '/server/proxy.conf'
 
-
-def download(path: str, url: str):
-    print('Request for {} at {}...'.format(url, datetime.datetime.now()))
-    download_request = requests.get(url, stream=True)
+def download(path: str, source_url: str):
+    download_request = requests.get(source_url, stream=True)
     if download_request.status_code == 200:
         with open(path, 'wb') as output_file:
             download_request.raw.decode_content = True
             shutil.copyfileobj(download_request.raw, output_file)
-        print('{} downloaded: {}b'.format(path, os.path.getsize(path)))
+        print('Download to {}: {}b'.format(path, os.path.getsize(path)))
     else:
-        print('{} download failed: {}'.format(path, download_request.text))
+        print('Download to {} failed: {}'.format(path, download_request.text))
 
 
 # Read configuration, if any.
@@ -33,9 +29,9 @@ if os.path.isfile(configuration_path):
     with open('/configuration.json') as configuration_file:
         configuration = json.load(configuration_file)
 else:
-    print('Warning! No configuration file has been provided. Server will run with default options.')
+    print('Warning! No configuration file has been provided. Server will run with default options')
 
-# Define proxy server parameters
+# Define proxy server parameters.
 keys = configuration.get('keys', [])
 new_keys = configuration.get('new_keys', 1)
 update_hours = configuration.get('update_hours', 12)
@@ -44,45 +40,41 @@ url = configuration.get('url', ip)
 port = configuration.get('port', 443)
 tag = configuration.get('tag', None)
 
-# Generate and print client keys.
-for i in range(0, new_keys):
-    key_string = binascii.b2a_hex(os.urandom(16)).decode('UTF-8')
-    keys.append(key_string)
-
-invite_url = 'tg://proxy?server={}&port={}&secret={}'
-print('----- Client Keys Data -----')
-if not url:
-    print('Warning! No server url or ip has been provided. Invite links will not be generated.')
-print('----------------------------')
-for key in keys:
-    print('Key: {}'.format(key))
-    if url:
-        print('Invite link: ' + invite_url.format(url, port, key))
-    print('----------------------------')
-
-# Download secret token from telegram core.
-download(secret_path, 'https://core.telegram.org/getProxySecret/proxy-secret')
-
-# Generate command for mtproxy binary, set system user, stat and proxy ports:
+# Base command for mtproxy binary, with system user, stat and proxy ports.
 command = '/server/mtproto-proxy -u nobody -p 80 -H 443'
-# Client keys:
-command += ' ' + ' '.join(['-S {}'.format(key) for key in keys])
-# Proxy server tag:
 if tag:
     command += ' -T {}'.format(tag)
-# NAT information:
+
+# Generate and print client keys.
+for i in range(0, new_keys):
+    keys.append(binascii.b2a_hex(os.urandom(16)).decode('UTF-8'))
+
+# Print client keys with invite keys.
+if not url:
+    print('Warning! No server url or ip has been provided. Invite links will not be generated.')
+for key in keys:
+    print('----------------------------')
+    print('Key: {}'.format(key))
+    if url:
+        print('Link: tg://proxy?server={}&port={}&secret={}'.format(url, port, key))
+    print('----------------------------')
+    command += ' -S ' + key
+
+# Check if server is behind NAT (external ip should be provided).
 if ip:
-    # Find local IP with internet access.
     test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    test_socket.connect(("8.8.8.8", 80))
+    test_socket.connect(("8.8.8.8", 80))  # Use Google DNS as remote node.
     local_ip = test_socket.getsockname()[0]
     test_socket.close()
-    print('Local IP defined as {}'.format(local_ip))
     if local_ip != ip:
+        print('Server local and external IP mismatch: {} vs {}'.format(local_ip, ip))
         command += ' --nat-info {}:{}'.format(local_ip, ip)
-# Telegram configuration files and workers count:
+
+# Configuration files.
+secret_path = '/server/secret'
+proxy_list_path = '/server/proxy.conf'
+download(secret_path, 'https://core.telegram.org/getProxySecret/proxy-secret')
 command += ' --aes-pwd {} {} -M 1'.format(secret_path, proxy_list_path)
-print('Launching:\n{}\n\n'.format(command))
 
 seconds_to_wait = update_hours * 3600
 server_process = None
@@ -96,14 +88,23 @@ while True:
     while True:
         try:
             time_left = seconds_to_wait - (time.time() - start_time)
-            print('Running server process for {} seconds...'.format(seconds_to_wait))
-            server_process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print('Launching at {}:\n{}'.format(datetime.datetime.now(), command))
+            print('Server will be interrupted after {} seconds'.format(time_left))
+            print('------------------------------------------------------')
+            server_process = subprocess.Popen(command.split())
             server_process.wait(timeout=time_left)
             # If we hit this, process has been terminated earlier than necessary. We should restart waiting cycle.
-            print('Early wake up!')
+            print('------------------------------------------------------')
+            print('Warning! Server exited unexpectedly with code {}'.format(server_process.returncode))
             continue
         except subprocess.TimeoutExpired:
-            print('Killing server process for update')
-            server_process.kill()
-            server_process.wait()
+            print('Stopping server process for update')
+            server_process.terminate()
+            try:
+                server_process.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                print('Warning! Server termination failed. Attempting to kill')
+                server_process.kill()
+                server_process.wait()
+            print('------------------------------------------------------')
             break
