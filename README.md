@@ -1,7 +1,6 @@
-# MTProxy v1.0
+# MTProxy v1.0.1
 Lightweight and easy to set up docker image for MTProto proxy server.
 
-[![Docker Build Status](https://img.shields.io/docker/build/viers/mtproxy.svg)](https://hub.docker.com/r/viers/mtproxy/)
 [![](https://images.microbadger.com/badges/image/viers/mtproxy.svg)](https://microbadger.com/images/viers/mtproxy "Image size")
 
 
