@@ -87,9 +87,9 @@ while True:
     # Inner loop: running and restarting the server, if it has crashed until the update time.
     while True:
         try:
-            time_left = seconds_to_wait - (time.time() - start_time)
+            time_left = int(seconds_to_wait - (time.time() - start_time))
             print('Launching at {}:\n{}'.format(datetime.datetime.now(), command))
-            print('Server will be interrupted after {} seconds'.format(time_left))
+            print('Server will be interrupted after {}'.format(datetime.timedelta(seconds=time_left)))
             print('------------------------------------------------------')
             server_process = subprocess.Popen(command.split())
             server_process.wait(timeout=time_left)
