@@ -11,19 +11,43 @@ import subprocess
 import time
 
 
-def download(path: str, source_url: str):
+configuration_path = '/configuration.json'
+proxy_list_path = '/server/proxy.conf'
+secret_path = '/server/secret'
+
+
+def download(path: str, source_url: str) -> bool:
     download_request = requests.get(source_url, stream=True)
     if download_request.status_code == 200:
         with open(path, 'wb') as output_file:
             download_request.raw.decode_content = True
             shutil.copyfileobj(download_request.raw, output_file)
         print('Download to {}: {}b'.format(path, os.path.getsize(path)))
+        return True
     else:
         print('Download to {} failed: {}'.format(path, download_request.text))
+        return False
+
+
+def update_remote_configurations(retry_minutes: int) -> bool:
+    print('Downloading remote configuration...')
+    while True:
+        updates_downloaded = False
+        try:
+            updates_downloaded = \
+                download(secret_path, 'https://core.telegram.org/getProxySecret') and \
+                download(proxy_list_path, 'https://core.telegram.org/getProxyConfig')
+        except Exception as e:
+            print('Download failed with an exception: {}'.format(e))
+
+        if updates_downloaded:
+            return True
+
+        print('Retrying download in {} minutes.'.format(retry_minutes))
+        time.sleep(60 * retry_minutes)
 
 
 # Read configuration, if any.
-configuration_path = '/configuration.json'
 with open(configuration_path) as configuration_file:
     configuration = json.load(configuration_file)
 
@@ -67,8 +91,6 @@ if ip:
         command += ' --nat-info {}:{}'.format(local_ip, ip)
 
 # Configuration files.
-proxy_list_path = '/server/proxy.conf'
-secret_path = '/server/secret'
 command += ' --aes-pwd {} {} -M 1'.format(secret_path, proxy_list_path)
 
 # Write actual configuration values into local configuration.
@@ -83,21 +105,16 @@ with open(configuration_path, 'w') as configuration_file:
     json.dump(configuration, configuration_file, indent='  ')
 print('Configuration file updated: {}b'.format(os.path.getsize(configuration_path)))
 
-seconds_to_wait = update_hours * 3600
+# On first update, we should get configurations as fast, as possible.
+update_remote_configurations(2)
 
 # Outer loop: each iteration updates remote configuration and run server for |update_hours|
 while True:
-    try:
-        download(secret_path, 'https://core.telegram.org/getProxySecret/proxy-secret')
-        download(proxy_list_path, 'https://core.telegram.org/getProxyConfig/proxy-multi.conf')
-    except Exception as e:
-        print('Download failed with an exception: {}'.format(e))
     start_time = time.time()
-
     # Inner loop: running and restarting the server, if it has crashed until the update time.
     while True:
         try:
-            time_left = int(seconds_to_wait - (time.time() - start_time))
+            time_left = int(update_hours * 3600 - (time.time() - start_time))
             print('Launching at {}:\n{}'.format(datetime.datetime.now(), command))
             print('Server will be interrupted after {}'.format(datetime.timedelta(seconds=time_left)))
             print('------------------------------------------------------')
@@ -108,6 +125,7 @@ while True:
             print('Warning! Server exited unexpectedly with code {}'.format(server_process.returncode))
             continue
         except subprocess.TimeoutExpired:
+            update_remote_configurations(30)
             print('Stopping server process for update')
             server_process.terminate()
             try:
