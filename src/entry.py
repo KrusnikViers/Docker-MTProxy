@@ -22,10 +22,6 @@ def download(path: str, source_url: str):
         print('Download to {} failed: {}'.format(path, download_request.text))
 
 
-# Download core token, to access telegram servers.
-secret_path = '/server/secret'
-download(secret_path, 'https://core.telegram.org/getProxySecret/proxy-secret')
-
 # Read configuration, if any.
 configuration_path = '/configuration.json'
 with open(configuration_path) as configuration_file:
@@ -72,6 +68,7 @@ if ip:
 
 # Configuration files.
 proxy_list_path = '/server/proxy.conf'
+secret_path = '/server/secret'
 command += ' --aes-pwd {} {} -M 1'.format(secret_path, proxy_list_path)
 
 # Write actual configuration values into local configuration.
@@ -90,7 +87,11 @@ seconds_to_wait = update_hours * 3600
 
 # Outer loop: each iteration updates remote configuration and run server for |update_hours|
 while True:
-    download(proxy_list_path, 'https://core.telegram.org/getProxyConfig/proxy-multi.conf')
+    try:
+        download(secret_path, 'https://core.telegram.org/getProxySecret/proxy-secret')
+        download(proxy_list_path, 'https://core.telegram.org/getProxyConfig/proxy-multi.conf')
+    except Exception as e:
+        print('Download failed with an exception: {}'.format(e))
     start_time = time.time()
 
     # Inner loop: running and restarting the server, if it has crashed until the update time.
