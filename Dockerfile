@@ -1,15 +1,12 @@
 FROM python:3-slim
 
-# Install dependencies.
-# Clone MTProto server and build it from sources.
-# Remove temporary files, source files, and dependencies that was needed only for building.
 RUN pip3 install --no-cache-dir --upgrade requests==2.19              && \
     apt-get update                                                    && \
     apt-get install -y git build-essential libssl-dev zlib1g-dev curl && \
     mkdir /build                                                      && \
     cd /build                                                         && \
     git clone https://github.com/TelegramMessenger/MTProxy .          && \
-    git reset --hard f9158e3129efd4ccdc291aefb840209791226a77         && \
+    git reset --hard dc0c7f3de40530053189c572936ae4fd1567269b         && \
     make                                                              && \
     mkdir /server                                                     && \
     cp /build/objs/bin/* /server                                      && \

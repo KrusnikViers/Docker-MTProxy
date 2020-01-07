@@ -4,16 +4,16 @@ import binascii
 import datetime
 import json
 import os
-import requests
 import shutil
 import socket
 import subprocess
 import time
 
+import requests
 
-configuration_path = '/configuration.json'
-proxy_list_path = '/server/proxy.conf'
-secret_path = '/server/secret'
+CONFIGURATION_FILEPATH = '/configuration.json'
+PROXY_LIST_FILEPATH = '/server/proxy.conf'
+SECRET_FILEPATH = '/server/secret'
 
 
 def download(path: str, source_url: str) -> bool:
@@ -35,8 +35,8 @@ def update_remote_configurations(retry_minutes: int) -> bool:
         updates_downloaded = False
         try:
             updates_downloaded = \
-                download(secret_path, 'https://core.telegram.org/getProxySecret') and \
-                download(proxy_list_path, 'https://core.telegram.org/getProxyConfig')
+                download(SECRET_FILEPATH, 'https://core.telegram.org/getProxySecret') and \
+                download(PROXY_LIST_FILEPATH, 'https://core.telegram.org/getProxyConfig')
         except Exception as e:
             print('Download failed with an exception: {}'.format(e))
 
@@ -48,8 +48,12 @@ def update_remote_configurations(retry_minutes: int) -> bool:
 
 
 # Read configuration, if any.
-with open(configuration_path) as configuration_file:
-    configuration = json.load(configuration_file)
+try:
+    with open(CONFIGURATION_FILEPATH) as configuration_file:
+        configuration = json.load(configuration_file)
+except FileNotFoundError:
+    print("Configuration file was not found. Please, check the documentation on how to mount the file.")
+    exit(1)
 
 # Define proxy server parameters.
 keys = configuration.get('keys', [])
@@ -63,7 +67,8 @@ tag = configuration.get('tag', '')
 # Base command for mtproxy binary, with system user, stat and proxy ports.
 command = '/server/mtproto-proxy -u nobody -p 80 -H 443'
 if tag:
-    command += ' -T {}'.format(tag)
+    print('Advertising tag configured: {}'.format(tag))
+    command += ' -P {}'.format(tag)
 
 # Generate and print client keys.
 for i in range(0, new_keys):
@@ -71,19 +76,20 @@ for i in range(0, new_keys):
 
 # Print client keys with invite keys.
 if not url:
-    print('Warning! No server url or ip has been provided. Invite links will not be generated.')
+    print('No server url or ip has been provided. Invite links will not be generated.')
+print('----------')
 for key in keys:
-    print('>>>>>>>>>>')
     print('Key: {}'.format(key))
     if url:
         print('Link: tg://proxy?server={}&port={}&secret={}'.format(url, port, key))
-    print('<<<<<<<<<<')
+        print('Random padding: tg://proxy?server={}&port={}&secret=dd{}'.format(url, port, key))
+    print('----------')
     command += ' -S ' + key
 
-# Check if server is behind NAT (external ip should be provided).
+# If external ip is configured and server is behind the NAT, add NAT information.
 if ip:
     test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    test_socket.connect(("8.8.8.8", 80))  # Use Google DNS as remote node.
+    test_socket.connect(("8.8.8.8", 80))  # Use Google DNS as a remote node.
     local_ip = test_socket.getsockname()[0]
     test_socket.close()
     if local_ip != ip:
@@ -91,7 +97,7 @@ if ip:
         command += ' --nat-info {}:{}'.format(local_ip, ip)
 
 # Configuration files.
-command += ' --aes-pwd {} {} -M 1'.format(secret_path, proxy_list_path)
+command += ' --aes-pwd {} {} -M 1'.format(SECRET_FILEPATH, PROXY_LIST_FILEPATH)
 
 # Write actual configuration values into local configuration.
 configuration['keys'] = keys
@@ -101,12 +107,12 @@ configuration['ip'] = ip
 configuration['url'] = url
 configuration['port'] = port
 configuration['tag'] = tag
-with open(configuration_path, 'w') as configuration_file:
+with open(CONFIGURATION_FILEPATH, 'w') as configuration_file:
     json.dump(configuration, configuration_file, indent='  ')
-print('Configuration file updated: {}b'.format(os.path.getsize(configuration_path)))
+print('Configuration file updated: {}b'.format(os.path.getsize(CONFIGURATION_FILEPATH)))
 
 # On first update, we should get configurations as fast, as possible.
-update_remote_configurations(2)
+update_remote_configurations(retry_minutes=1)
 
 # Outer loop: each iteration updates remote configuration and run server for |update_hours|
 while True:
@@ -125,8 +131,9 @@ while True:
             print('Warning! Server exited unexpectedly with code {}'.format(server_process.returncode))
             continue
         except subprocess.TimeoutExpired:
-            update_remote_configurations(30)
-            print('Stopping server process for update')
+            print('Requesting new configuration')
+            update_remote_configurations(retry_minutes=30)
+            print('Restarting service process...')
             server_process.terminate()
             try:
                 server_process.wait(timeout=20)
