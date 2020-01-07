@@ -1,4 +1,4 @@
-# MTProxy v1.1
+# MTProxy v1.2
 Lightweight and easy to set up docker image for the MTProto proxy server.
 
 [![Docker Build Status](https://img.shields.io/docker/build/viers/mtproxy.svg)](https://hub.docker.com/r/viers/mtproxy/)
@@ -19,22 +19,28 @@ Configuration parameters:
 * `update_hours`: How often telegram servers list will be updated (in hours). Default value: 12.
 * `ip`: Server external IP. Necessary for servers behind NAT, also used in invite links, if server URL was not provided. Empty by default.
 * `url`: Server URL, if any, to be used in invite links. Default value: same as `ip`.
-* `port`: Exposed server port for invite links. Default value: 443.
+* `port_stats`: Port for HTTP Stats. Default value: 80
+* `port`: Exposed server port for invite links. Default value: 4000.
+* `fake_tls_domain`: Fake-TLS domain. **Important!** Specifying this value disables all the other transports.
 * `tag`: Your proxy tag, optionally received from [@MTProxyBot](https://t.me/MTProxybot). Empty by default.
 
-To launch container: `docker run -d --restart always -p [port]:443 -v [full-configuration-file-path]:/configuration.json --name mtproxy viers/mtproxy`.
+To launch container: `docker run -d --restart always -p [port]:[port] -v [full-configuration-file-path]:/configuration.json --name mtproxy viers/mtproxy`.
 
 To see the logs: `docker logs --follow mtproxy`.
+
+To collect server stats: `docker exec mtproxy curl http://localhost:[port_stats]/stats`
 
 Example Configuration:
 ```
 {
   "keys": [],
   "new_keys": 1,
+  "fake_tls_domain": "microsoft.com",
   "ip": "",
   "url": "",
-  "port": 443,
+  "port": 4000,
   "update_hours": 12,
+  "port_stats": 80,
   "tag": ""
 }
 ```

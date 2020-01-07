@@ -61,14 +61,38 @@ new_keys = configuration.get('new_keys', 1)
 update_hours = configuration.get('update_hours', 12)
 ip = configuration.get('ip', '')
 url = configuration.get('url', ip)
-port = configuration.get('port', 443)
+port = configuration.get('port', 4000)
+fake_tls_domain = configuration.get('fake_tls_domain', '')
+port_stats = configuration.get('port_stats', 80)
 tag = configuration.get('tag', '')
 
 # Base command for mtproxy binary, with system user, stat and proxy ports.
-command = '/server/mtproto-proxy -u nobody -p 80 -H 443'
+command = '/server/mtproto-proxy -u nobody'
+command += ' -H {}'.format(port)
+if port_stats:
+    print('Serving HTTP stats on {} port. Accessible only via loopback'.format(port_stats))
+    command += ' -p {} --http-stats'.format(port_stats)
+
 if tag:
     print('Advertising tag configured: {}'.format(tag))
     command += ' -P {}'.format(tag)
+
+# Add Fake-TLS Domain, if configured.
+fake_tls_hex = None
+if fake_tls_domain:
+    print('Using {} for FakeTLS'.format(fake_tls_domain))
+    command += ' -D {}'.format(fake_tls_domain)
+    fake_tls_hex = binascii.b2a_hex(fake_tls_domain.encode('UTF-8')).decode('UTF-8')
+
+# If external ip is configured and server is behind the NAT, add NAT information.
+if ip:
+    test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    test_socket.connect(("8.8.8.8", 80))  # Use Google DNS as a remote node.
+    local_ip = test_socket.getsockname()[0]
+    test_socket.close()
+    if local_ip != ip:
+        print('Configuring server to work behind the NAT: local {} vs global {}'.format(local_ip, ip))
+        command += ' --nat-info {}:{}'.format(local_ip, ip)
 
 # Generate and print client keys.
 for i in range(0, new_keys):
@@ -81,23 +105,15 @@ print('----------')
 for key in keys:
     print('Key: {}'.format(key))
     if url:
-        print('Link: tg://proxy?server={}&port={}&secret={}'.format(url, port, key))
-        print('Random padding: tg://proxy?server={}&port={}&secret=dd{}'.format(url, port, key))
+        if fake_tls_hex:
+            print('tg://proxy?server={}&port={}&secret=ee{}{}'.format(url, port, key, fake_tls_hex))
+        else:
+            print('tg://proxy?server={}&port={}&secret=dd{}'.format(url, port, key))
     print('----------')
     command += ' -S ' + key
 
-# If external ip is configured and server is behind the NAT, add NAT information.
-if ip:
-    test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    test_socket.connect(("8.8.8.8", 80))  # Use Google DNS as a remote node.
-    local_ip = test_socket.getsockname()[0]
-    test_socket.close()
-    if local_ip != ip:
-        print('Server local and external IP mismatch: {} vs {}'.format(local_ip, ip))
-        command += ' --nat-info {}:{}'.format(local_ip, ip)
-
 # Configuration files.
-command += ' --aes-pwd {} {} -M 1'.format(SECRET_FILEPATH, PROXY_LIST_FILEPATH)
+command += ' --aes-pwd {} {}'.format(SECRET_FILEPATH, PROXY_LIST_FILEPATH)
 
 # Write actual configuration values into local configuration.
 configuration['keys'] = keys
@@ -105,7 +121,9 @@ configuration['new_keys'] = 0
 configuration['update_hours'] = update_hours
 configuration['ip'] = ip
 configuration['url'] = url
+configuration['port_stats'] = port_stats
 configuration['port'] = port
+configuration['fake_tls_domain'] = fake_tls_domain
 configuration['tag'] = tag
 with open(CONFIGURATION_FILEPATH, 'w') as configuration_file:
     json.dump(configuration, configuration_file, indent='  ')
